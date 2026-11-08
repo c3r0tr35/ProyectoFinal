@@ -5,6 +5,7 @@ import validaciones as val
 import persistencia as per
 import inventario as inv
 import ventas as ven
+import reportes as rep
 
 
 ####
@@ -160,6 +161,55 @@ def nueva_venta(inventario):
 
 
 ####
+def mostrar_alertas(inventario):
+    por_proveedor = rep.alertas_stock(inventario)
+    print("\n   Alertas de stock   ")
+    if not por_proveedor:
+        print("No hay productos por reabastecer.")
+        return
+    for proveedor, filas in por_proveedor.items():
+        print(f"\nProveedor: {proveedor}")
+        print(tabulate(filas, headers=["Codigo", "Producto", "Stock", "Minimo", "Estado"], tablefmt="grid"))
+
+
+def mostrar_cierre(inventario):
+    fecha = str(datetime.date.today())
+    ventas = per.cargar_ventas()
+    r = rep.cierre_dia(inventario, ventas, fecha)
+
+    print(f"\n   Cierre del dia {fecha}   ")
+    if r["ventas"] == 0:
+        print("Hoy no se han registrado ventas.")
+    else:
+        print(f"Total vendido: ${r['total']:,.0f}")
+        print(f"Numero de ventas: {r['ventas']}")
+        print(f"Ticket promedio: ${r['promedio']:,.0f}")
+        print(f"Producto mas vendido: {r['mas_vendido'][0]} ({r['mas_vendido'][1]} unidades)")
+        print(f"Categorias con movimiento: {', '.join(r['categorias'])}")
+    if r["sin_ventas"]:
+        print("Productos sin ventas:")
+        for nombre in r["sin_ventas"]:
+            print(f"- {nombre}")
+    else:
+        print("Todos los productos tuvieron ventas.")
+
+
+def menu_reportes(inventario):
+    while True:
+        print("\n   Reportes   ")
+        print("1. Alertas de stock")
+        print("2. Cierre del dia")
+        print("0. Volver")
+        opcion = val.pedir_opcion("Opcion: ", ["0", "1", "2"])
+        if opcion == "0":
+            return
+        elif opcion == "1":
+            mostrar_alertas(inventario)
+        elif opcion == "2":
+            mostrar_cierre(inventario)
+
+
+####
 def main():
     inventario = per.cargar_inventario()
     print(f"Inventario cargado: {len(inventario)} productos.")
@@ -168,14 +218,17 @@ def main():
         print("\n   TiendaPy - Don Aurelio   ")
         print("1. Inventario")
         print("2. Nueva venta")
+        print("3. Reportes")
         print("4. Guardar inventario")
         print("0. Salir")
-        opcion = val.pedir_opcion("Opcion: ", ["0", "1", "2", "4"])
+        opcion = val.pedir_opcion("Opcion: ", ["0", "1", "2", "3", "4"])
 
         if opcion == "1":
             menu_inventario(inventario)
         elif opcion == "2":
             nueva_venta(inventario)
+        elif opcion == "3":
+            menu_reportes(inventario)
         elif opcion == "4":
             per.guardar_inventario(inventario)
             print("Inventario guardado.")
