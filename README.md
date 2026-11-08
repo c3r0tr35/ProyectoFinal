@@ -51,3 +51,7 @@ ventas.txt: `fecha|total|codigo:cantidad;codigo:cantidad`
 - Los productos son diccionarios y el inventario es un diccionario por codigo.
 - Las reglas de negocio lanzan `ValueError` con `raise` y se capturan en `main.py`.
 - Se usa `tabulate` para mostrar las tablas.
+
+## Autor
+
+- Laura Juliana Correa Carrillo | 20252020078
