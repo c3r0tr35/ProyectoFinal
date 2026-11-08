@@ -1,6 +1,10 @@
+import datetime
+from tabulate import tabulate
+
 import validaciones as val
 import persistencia as per
 import inventario as inv
+import ventas as ven
 
 
 ####
@@ -85,6 +89,77 @@ def menu_inventario(inventario):
 
 
 ####
+def mostrar_carrito(inventario, carrito):
+    filas = []
+    for codigo, cantidad in carrito.items():
+        p = inventario[codigo]
+        filas.append([p["nombre"], cantidad, f"${p['precio'] * cantidad:,.0f}"])
+    print(tabulate(filas, headers=["Producto", "Cantidad", "Valor"], tablefmt="grid"))
+
+
+def nueva_venta(inventario):
+    if not inventario:
+        print("No hay productos en el inventario.")
+        return
+
+    carrito = {}
+    print("\n   Nueva venta   (deje el codigo vacio para terminar)")
+    while True:
+        codigo = input("Codigo: ").strip().upper()
+        if codigo == "":
+            break
+        if codigo not in inventario:
+            print("No existe un producto con ese codigo.")
+            continue
+        print(f"{inventario[codigo]['nombre']} - ${inventario[codigo]['precio']:,.0f} - disponibles: {inventario[codigo]['stock']}")
+        cantidad = val.pedir_entero("Cantidad: ")
+        try:
+            ven.agregar_al_carrito(inventario, carrito, codigo, cantidad)
+        except ValueError as e:
+            print("Error:", e)
+
+    if not carrito:
+        print("Venta cancelada, el carrito esta vacio.")
+        return
+
+    subtotal = ven.calcular_subtotal(inventario, carrito)
+    descuento = ven.calcular_descuento(subtotal)
+    total = subtotal - descuento
+
+    print()
+    mostrar_carrito(inventario, carrito)
+    print(f"Subtotal:  ${subtotal:,.0f}")
+    print(f"Descuento: ${descuento:,.0f}")
+    print(f"Total:     ${total:,.0f}")
+
+    if not val.pedir_si_no("Confirmar venta? (s/n): "):
+        print("Venta cancelada.")
+        return
+
+    while True:
+        pago = val.pedir_float("Pago recibido: ")
+        try:
+            cambio = ven.calcular_cambio(total, pago)
+            break
+        except ValueError as e:
+            print("Error:", e)
+            if not val.pedir_si_no("Reintentar? (s/n): "):
+                print("Venta cancelada.")
+                return
+
+    try:
+        ven.confirmar_venta(inventario, carrito)
+    except ValueError as e:
+        print("Error:", e)
+        return
+
+    fecha = str(datetime.date.today())
+    per.registrar_venta(fecha, total, carrito)
+    per.guardar_inventario(inventario)
+    print(f"Venta registrada. Cambio: ${cambio:,.0f}")
+
+
+####
 def main():
     inventario = per.cargar_inventario()
     print(f"Inventario cargado: {len(inventario)} productos.")
@@ -92,12 +167,15 @@ def main():
     while True:
         print("\n   TiendaPy - Don Aurelio   ")
         print("1. Inventario")
+        print("2. Nueva venta")
         print("4. Guardar inventario")
         print("0. Salir")
-        opcion = val.pedir_opcion("Opcion: ", ["0", "1", "4"])
+        opcion = val.pedir_opcion("Opcion: ", ["0", "1", "2", "4"])
 
         if opcion == "1":
             menu_inventario(inventario)
+        elif opcion == "2":
+            nueva_venta(inventario)
         elif opcion == "4":
             per.guardar_inventario(inventario)
             print("Inventario guardado.")
